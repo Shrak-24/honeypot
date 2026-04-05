@@ -1,0 +1,67 @@
+py : C:\Users\DELL\AppData
+\Local\Programs\Python\Pyt
+hon310\lib\site-packages\g
+oogle\api_core\_python_ver
+sion_support.py:275: 
+FutureWarning: You are 
+using a Python version 
+(3.10.9) which Google 
+will stop supporting in 
+new releases of 
+google.api_core once it 
+reaches its end of life 
+(2026-10-04). Please 
+upgrade to the latest 
+Python version, or at 
+least Python 3.11, to 
+continue receiving 
+updates for 
+google.api_core past that 
+date.
+At line:1 char:1
++ py test_gemini.py 2>&1 
+| Out-File -Encoding 
+ascii gemini_test.txt; ty 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  :\Users\DELL\A...past   
+  that date.:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  warnings.warn(message, 
+FutureWarning)
+D:\Ai\Hackathon AI\MirrorT
+rap\test_gemini.py:5: 
+FutureWarning: 
+
+All support for the 
+`google.generativeai` 
+package has ended. It 
+will no longer be 
+receiving 
+updates or bug fixes. 
+Please switch to the 
+`google.genai` package as 
+soon as possible.
+See README for more 
+details:
+
+https://github.com/google-
+gemini/deprecated-generati
+ve-ai-python/blob/main/REA
+DME.md
+
+  import 
+google.generativeai as 
+genai
+Testing gemini-1.5-flash...
+  FAIL: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+Testing gemini-2.0-flash...
+  FAIL: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current
+Testing gemini-2.0-flash-lite...
+  FAIL: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current

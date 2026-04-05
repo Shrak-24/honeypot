@@ -1,0 +1,122 @@
+py : C:\Users\DELL\AppData
+\Local\Programs\Python\Pyt
+hon310\lib\site-packages\g
+oogle\api_core\_python_ver
+sion_support.py:275: 
+FutureWarning: You are 
+using a Python version 
+(3.10.9) which Google 
+will stop supporting in 
+new releases of 
+google.api_core once it 
+reaches its end of life 
+(2026-10-04). Please 
+upgrade to the latest 
+Python version, or at 
+least Python 3.11, to 
+continue receiving 
+updates for 
+google.api_core past that 
+date.
+At line:1 char:1
++ py test_app.py 2>&1 | 
+Out-File -Encoding ascii 
+test_ascii.txt; type t ...
++ ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  :\Users\DELL\A...past   
+  that date.:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  warnings.warn(message, 
+FutureWarning)
+D:\Ai\Hackathon AI\MirrorT
+rap\test_app.py:49: 
+FutureWarning: 
+
+All support for the 
+`google.generativeai` 
+package has ended. It 
+will no longer be 
+receiving 
+updates or bug fixes. 
+Please switch to the 
+`google.genai` package as 
+soon as possible.
+See README for more 
+details:
+
+https://github.com/google-
+gemini/deprecated-generati
+ve-ai-python/blob/main/REA
+DME.md
+
+  __import__(module_path)
+============================================================
+MirrorTrap Diagnostic Test
+============================================================
+
+[1] Checking .env / environment...
+  .env found at: D:\Ai\Hackathon AI\.env
+  python-dotenv not installed ? loading manually
+  GEMINI_API_KEY: SET (AIzaSyD5...)
+  SECRET_KEY: SET
+
+[2] Testing imports...
+  [OK]   flask
+  [OK]   flask_cors
+  [OK]   google.generativeai
+  [OK]   mirrortrap.core.logger
+  [OK]   mirrortrap.core.logger.setup_db
+  [OK]   mirrortrap.core.logger.get_logs
+  [OK]   mirrortrap.core.logger.get_sessions
+  [OK]   mirrortrap.core.logger.get_activity_log
+  [OK]   mirrortrap.ai.gemini_client.analyze_logs
+  [OK]   mirrortrap.ai.gemini_client.generate_fake_data
+  [OK]   mirrortrap.api.routes.api_bp
+  [OK]   mirrortrap.ai.routes.ai_bp
+  [OK]   mirrortrap.integrations.cowrie.cowrie_bp
+  [OK]   mirrortrap.fake_services.http.fake_http_bp
+
+[3] Creating Flask app...
+  [OK]   create_app()
+  Routes registered:
+         /                                                   [DELETE,GET,PATCH,POST,PUT]
+         /<path:path>                                        [DELETE,GET,PATCH,POST,PUT]
+         /ai/analyze                                         [POST]
+         /ai/generate-fake-data                              [POST]
+         /api/activity                                       [GET]
+         /api/logs                                           [GET]
+         /api/sessions                                       [GET]
+         /api/sessions/<session_id>/commands                 [GET]
+         /integrations/cowrie/webhook                        [POST]
+         /static/<path:filename>                             [GET]
+
+[4] Checking app config...
+  GEMINI_API_KEY in config: YES (AIzaSyD5...)
+  DATABASE_URI: sqlite:///mirrortrap.db
+
+[5] Testing database...
+  [OK]   DB accessible at sqlite:///mirrortrap.db
+         attack_logs rows (sample 5): 5
+         ssh_sessions rows (sample 5): 3
+         activity rows (sample 5): 5
+
+[6] Testing HTTP endpoints...
+  [FAIL] GET /api/logs: 'charmap' codec can't encode character '\u2192' in position 23: character maps to <undefined>
+  [FAIL] GET /api/sessions: 'charmap' codec can't encode character '\u2192' in position 27: character maps to <undefined>
+  [FAIL] GET /api/activity: 'charmap' codec can't encode character '\u2192' in position 27: character maps to <undefined>
+  [FAIL] GET /api/sessions/sess-aabbcc/commands: 'charmap' codec can't encode character '\u2192' in position 48: character maps to <undefined>
+  [FAIL] POST /ai/analyze: 'charmap' codec can't encode character '\u2192' in position 26: character maps to <undefined>
+  [FAIL] POST /ai/generate-fake-data: 'charmap' codec can't encode character '\u2192' in position 37: character maps to <undefined>
+  [FAIL] GET /.env (lure): 'charmap' codec can't encode character '\u2192' in position 26: character maps to <undefined>
+  [FAIL] GET /wp-admin (lure): 'charmap' codec can't encode character '\u2192' in position 30: character maps to <undefined>
+  [FAIL] GET /phpmyadmin (lure): 'charmap' codec can't encode character '\u2192' in position 32: character maps to <undefined>
+
+============================================================
+Diagnostics complete.
+============================================================

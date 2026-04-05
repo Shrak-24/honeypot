@@ -1,0 +1,104 @@
+py : C:\Users\DELL\AppData
+\Local\Programs\Python\Pyt
+hon310\lib\site-packages\g
+oogle\api_core\_python_ver
+sion_support.py:275: 
+FutureWarning: You are 
+using a Python version 
+(3.10.9) which Google 
+will stop supporting in 
+new releases of 
+google.api_core once it 
+reaches its end of life 
+(2026-10-04). Please 
+upgrade to the latest 
+Python version, or at 
+least Python 3.11, to 
+continue receiving 
+updates for 
+google.api_core past that 
+date.
+At line:1 char:1
++ py final_test.py 2>&1 | 
+Out-File -FilePath 
+final_results.txt 
+-Encodin ...
++ ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  :\Users\DELL\A...past   
+  that date.:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+[app.py] Loaded .env from D:\Ai\Hackathon AI\.env
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+[gemini_client] Model gemini-1.5-flash unavailable, trying next???
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+[gemini_client] Model gemini-1.5-flash-latest unavailable, trying next???
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+[gemini_client] Model gemini-1.5-flash unavailable, trying next???
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+  warnings.warn(message, 
+FutureWarning)
+D:\Ai\Hackathon AI\MirrorT
+rap\mirrortrap\ai\gemini_c
+lient.py:13: 
+FutureWarning: 
+
+All support for the 
+`google.generativeai` 
+package has ended. It 
+will no longer be 
+receiving 
+updates or bug fixes. 
+Please switch to the 
+`google.genai` package as 
+soon as possible.
+See README for more 
+details:
+
+https://github.com/google-
+gemini/deprecated-generati
+ve-ai-python/blob/main/REA
+DME.md
+
+  import 
+google.generativeai as 
+genai
+[gemini_client] Model gemini-1.5-flash-latest unavailable, trying next???
+[gemini_client] 429 rate limit hit (attempt 1/3). Waiting 1s???
+[gemini_client] 429 rate limit hit (attempt 2/3). Waiting 2s???
+[gemini_client] 429 rate limit hit (attempt 3/3). Waiting 4s???
+
+=======================================================
+MirrorTrap Health Check Results
+=======================================================
+  [OK  ]  python-dotenv installed
+  [OK  ]  create_app() succeeded
+  [OK  ]  GEMINI_API_KEY loaded (AIzaSyD5...)
+  [OK  ]  DATABASE_URI = sqlite:///mirrortrap.db
+  [OK  ]  GET /api/logs  =>  200 success
+  [OK  ]  GET /api/sessions  =>  200 success
+  [OK  ]  GET /api/activity  =>  200 success
+  [OK  ]  GET /api/sessions/sess-aabbcc/commands  =>  200 success
+  [OK  ]  GET /.env  =>  200 ?
+  [OK  ]  GET /wp-admin  =>  404 ?
+  [FAIL]  POST /ai/analyze  =>  500 error  (429 You exceeded your current quota, please check your plan and billing details.)
+  [FAIL]  POST /ai/generate-fake-data  =>  500 error  (429 You exceeded your current quota, please check your plan and billing details.)
+=======================================================
+  10 passed   2 failed
+=======================================================
