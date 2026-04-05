@@ -469,6 +469,13 @@ button { cursor: pointer; font-family: var(--sans); }
 
 .attacker-item.active .attacker-ip { color: var(--accent); }
 
+.attacker-ip-small {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
 .attacker-sub {
   display: flex;
   align-items: center;
@@ -971,3 +978,86 @@ button { cursor: pointer; font-family: var(--sans); }
   .stats-bar { grid-template-columns: repeat(3, 1fr); }
   .content-area { grid-template-columns: 1fr; }
 }
+
+/* ── Attacker Report Panel ──────────────────────────────────────────────────── */
+.report-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.report-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-section:first-child { padding-top: 4px; }
+.report-section:last-child  { border-bottom: none; }
+
+.report-section-title {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-dim), transparent);
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.report-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.report-value.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.report-flag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.report-flag.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(255,77,109,0.25); }
+.report-flag.orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,140,66,0.25); }
+

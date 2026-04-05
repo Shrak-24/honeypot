@@ -1,7 +1,31 @@
 from flask import Blueprint, jsonify, current_app, request
+import urllib.request
+import json as _json
 from mirrortrap.core.logger import get_logs, get_sessions, get_session_commands, get_activity_log
 
 api_bp = Blueprint('api_bp', __name__)
+
+# Simple in-memory cache so we don't hammer ip-api.com
+_geo_cache: dict = {}
+
+
+@api_bp.route('/geo/<ip>', methods=['GET'])
+def geo_lookup(ip):
+    """Proxy ip-api.com geolocation for an IP address. Cached in-memory."""
+    if ip in _geo_cache:
+        return jsonify({"status": "success", "data": _geo_cache[ip]}), 200
+    try:
+        fields = "status,country,countryCode,regionName,city,isp,org,as,proxy,hosting"
+        url = f"https://ip-api.com/json/{ip}?fields={fields}"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = _json.loads(resp.read().decode())
+        if data.get("status") == "success":
+            _geo_cache[ip] = data
+            return jsonify({"status": "success", "data": data}), 200
+        return jsonify({"status": "error", "message": "geo lookup failed"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 200
+
 
 
 @api_bp.route('/logs', methods=['GET'])

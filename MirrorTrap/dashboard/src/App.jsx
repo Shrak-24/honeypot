@@ -330,10 +330,16 @@ function StatsBar({ sessions, allLogs }) {
 function AttackerList({ sessions, loading, selected, onSelect, onRefresh, refreshing }) {
   const [query, setQuery] = useState('')
 
-  const filtered = sessions.filter(s =>
+  // Build a stable index map: session_id → "Attacker N"
+  const attackerLabel = Object.fromEntries(
+    sessions.map((s, i) => [s.session_id, `Attacker ${i + 1}`])
+  )
+
+  const filtered = sessions.filter((s, i) =>
     !query ||
     s.source_ip.includes(query) ||
-    (s.username || '').toLowerCase().includes(query.toLowerCase())
+    (s.username || '').toLowerCase().includes(query.toLowerCase()) ||
+    `attacker ${i + 1}`.includes(query.toLowerCase())
   )
 
   return (
@@ -362,7 +368,7 @@ function AttackerList({ sessions, loading, selected, onSelect, onRefresh, refres
           <span className="search-icon"><Icons.Search /></span>
           <input
             className="search-input"
-            placeholder="Search IP or username…"
+            placeholder="Search attacker, IP or username…"
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
@@ -385,6 +391,7 @@ function AttackerList({ sessions, loading, selected, onSelect, onRefresh, refres
           <ul className="attacker-list">
             {filtered.map(s => {
               const level = threatLevel(s)
+              const label = attackerLabel[s.session_id] || 'Attacker ?'
               return (
                 <li
                   key={s.session_id}
@@ -395,12 +402,15 @@ function AttackerList({ sessions, loading, selected, onSelect, onRefresh, refres
                     {level === 'critical' ? <Icons.Skull /> : <Icons.User />}
                   </div>
                   <div className="attacker-info">
-                    <div className="attacker-ip">{s.source_ip}</div>
-                    <div className="attacker-sub">
-                      <div className={`threat-dot ${level}`} />
-                      <span className="attacker-cred">
-                        {s.username ? `${s.username} / ${s.password || '?'}` : 'HTTP scan'}
-                      </span>
+                    <div className="attacker-ip">{label}</div>
+                    <div className="attacker-sub" style={{ flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                      <span className="attacker-ip-small">{s.source_ip}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div className={`threat-dot ${level}`} />
+                        <span className="attacker-cred">
+                          {s.username ? `${s.username} / ${s.password || '?'}` : 'HTTP scan'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <span className={`threat-pill ${level}`}>
@@ -438,6 +448,216 @@ function AttackTypeChart({ logs }) {
             <div className="atk-bar-count">{count}</div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ── IP Geolocation Hook ───────────────────────────────────────────────────────
+
+function useGeo(ip) {
+  const [geo, setGeo] = useState(null)
+  useEffect(() => {
+    if (!ip) { setGeo(null); return }
+    setGeo(null)
+    fetch(`/api/geo/${ip}`)
+      .then(r => r.json())
+      .then(d => { if (d.status === 'success') setGeo(d.data) })
+      .catch(() => {})
+  }, [ip])
+  return geo
+}
+
+// ── Attacker Report Panel ─────────────────────────────────────────────────────
+
+function AttackerReport({ session, sessionLogs, activity, actLoading, onCopy }) {
+  const geo = useGeo(session?.source_ip)
+
+  if (!session) {
+    return (
+      <div className="panel" style={{ gridColumn: 1, gridRow: 1 }}>
+        <div className="panel-header">
+          <div className="panel-title">
+            <span className="panel-title-icon"><Icons.Shield /></span>
+            Attacker Report
+          </div>
+        </div>
+        <div className="panel-body">
+          <div className="empty-state">
+            <div className="empty-icon"><Icons.User /></div>
+            <div className="empty-title">No attacker selected</div>
+            <div className="empty-sub">Click a session from the left panel.</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const level = threatLevel(session)
+  const cmds = activity.filter(a => a.type === 'cmd')
+  const atkEntries = getAttackTypeFreq(sessionLogs)
+  const maxAtk = atkEntries[0]?.[1] || 1
+
+  const duration = (() => {
+    if (!session.start_time) return '—'
+    const end = session.end_time ? new Date(session.end_time + 'Z') : new Date()
+    const start = new Date(session.start_time + 'Z')
+    const secs = Math.round((end - start) / 1000)
+    if (secs < 60) return `${secs}s`
+    return `${Math.floor(secs / 60)}m ${secs % 60}s`
+  })()
+
+  const flagUrl = geo?.countryCode
+    ? `https://flagcdn.com/20x15/${geo.countryCode.toLowerCase()}.png`
+    : null
+
+  return (
+    <div className="panel" style={{ gridColumn: 1, gridRow: 1 }}>
+      <div className="panel-header">
+        <div className="panel-title">
+          <span className="panel-title-icon"><Icons.Shield /></span>
+          Attacker Report
+        </div>
+        <span className={`threat-pill ${level}`}>
+          {level === 'critical' ? <><Icons.Check /> AUTH BREACH</> : level.toUpperCase()}
+        </span>
+      </div>
+
+      <div className="panel-body">
+        <div className="report-body">
+
+          {/* IP + Geo */}
+          <div className="report-section">
+            <div className="report-section-title">Identity</div>
+            <div className="report-grid">
+              <div className="report-field">
+                <div className="report-label">IP Address</div>
+                <div className="report-value mono" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {session.source_ip}
+                  <button className="cmd-copy" style={{ opacity: 1 }} onClick={() => onCopy(session.source_ip)}>
+                    <Icons.Copy />
+                  </button>
+                </div>
+              </div>
+              {geo && (
+                <>
+                  <div className="report-field">
+                    <div className="report-label">Location</div>
+                    <div className="report-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {flagUrl && <img src={flagUrl} alt={geo.countryCode} style={{ borderRadius: 2 }} />}
+                      {geo.city}, {geo.regionName}, {geo.country}
+                    </div>
+                  </div>
+                  <div className="report-field">
+                    <div className="report-label">ISP / Org</div>
+                    <div className="report-value">{geo.org || geo.isp || '—'}</div>
+                  </div>
+                  {(geo.proxy || geo.hosting) && (
+                    <div className="report-field">
+                      <div className="report-label">Flags</div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {geo.proxy && <span className="report-flag red">PROXY / VPN</span>}
+                        {geo.hosting && <span className="report-flag orange">HOSTING / DC</span>}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {!geo && session.source_ip && (
+                <div className="report-field">
+                  <div className="report-label">Location</div>
+                  <div className="report-value" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Resolving…</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Credentials */}
+          <div className="report-section">
+            <div className="report-section-title">Credentials Attempted</div>
+            <div className="report-grid">
+              <div className="report-field">
+                <div className="report-label">Username</div>
+                <div className="report-value mono">{session.username || <span style={{ color: 'var(--text-muted)' }}>—</span>}</div>
+              </div>
+              <div className="report-field">
+                <div className="report-label">Password</div>
+                <div className="report-value mono">{session.password || <span style={{ color: 'var(--text-muted)' }}>—</span>}</div>
+              </div>
+              <div className="report-field">
+                <div className="report-label">Auth Result</div>
+                <div className="report-value">
+                  {session.success === 1
+                    ? <span style={{ color: 'var(--red)', fontWeight: 700 }}>✗ BREACHED</span>
+                    : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓ Blocked</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Session Meta */}
+          <div className="report-section">
+            <div className="report-section-title">Session Info</div>
+            <div className="report-grid">
+              <div className="report-field">
+                <div className="report-label">Started</div>
+                <div className="report-value mono">{fmtTime(session.start_time)}</div>
+              </div>
+              <div className="report-field">
+                <div className="report-label">Duration</div>
+                <div className="report-value mono">{duration}</div>
+              </div>
+              <div className="report-field">
+                <div className="report-label">Commands Run</div>
+                <div className="report-value mono">{cmds.length}</div>
+              </div>
+              <div className="report-field">
+                <div className="report-label">HTTP Attacks</div>
+                <div className="report-value mono">{sessionLogs.length}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Attack Distribution */}
+          {atkEntries.length > 0 && (
+            <div className="report-section">
+              <div className="report-section-title">Attack Distribution</div>
+              <div className="atk-bar-wrap" style={{ marginTop: 8 }}>
+                {atkEntries.map(([type, count]) => (
+                  <div key={type} className="atk-bar-row">
+                    <div className="atk-bar-label">{type.replace(/_/g, ' ')}</div>
+                    <div className="atk-bar-track">
+                      <div className="atk-bar-fill" style={{ width: `${(count / maxAtk) * 100}%` }} />
+                    </div>
+                    <div className="atk-bar-count">{count}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Commands log */}
+          {cmds.length > 0 && (
+            <div className="report-section">
+              <div className="report-section-title">Captured Commands ({cmds.length})</div>
+              {actLoading ? (
+                <div className="loader" style={{ padding: 12 }}><div className="spinner" /></div>
+              ) : (
+                <ul className="cmd-list" style={{ marginTop: 6 }}>
+                  {cmds.map(c => (
+                    <li key={c.id} className="cmd-row">
+                      <span className="cmd-time">{fmtTime(c.time)}</span>
+                      <span className="cmd-prompt">$</span>
+                      <span className={`cmd-text ${cmdClass(c.text)}`}>{c.text}</span>
+                      <button className="cmd-copy" onClick={() => onCopy(c.text)}><Icons.Copy /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   )
@@ -750,49 +970,14 @@ export default function App() {
         {/* Content */}
         <div className="content-area">
 
-          {/* Shell Commands */}
-          <div className="panel" style={{ gridColumn: 1, gridRow: 1 }}>
-            <div className="panel-header">
-              <div className="panel-title">
-                <span className="panel-title-icon"><Icons.Terminal /></span>
-                Shell Commands
-              </div>
-              <span className="badge">{activity.filter(a => a.type === 'cmd').length}</span>
-            </div>
-            {selectedSession && sessionLogs.length > 0 && (
-              <AttackTypeChart logs={sessionLogs} />
-            )}
-            <div className="panel-body">
-              {!selectedId ? (
-                <div className="empty-state">
-                  <div className="empty-icon"><Icons.Terminal /></div>
-                  <div className="empty-title">Select an attacker</div>
-                  <div className="empty-sub">Click a session from the left panel.</div>
-                </div>
-              ) : actLoading ? (
-                <div className="loader"><div className="spinner" /></div>
-              ) : activity.filter(a => a.type === 'cmd').length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon"><Icons.Terminal /></div>
-                  <div className="empty-title">No SSH commands</div>
-                  <div className="empty-sub">This attacker used HTTP only.</div>
-                </div>
-              ) : (
-                <ul className="cmd-list">
-                  {activity.filter(a => a.type === 'cmd').map(c => (
-                    <li key={c.id} className="cmd-row">
-                      <span className="cmd-time">{fmtTime(c.time)}</span>
-                      <span className="cmd-prompt">$</span>
-                      <span className={`cmd-text ${cmdClass(c.text)}`}>{c.text}</span>
-                      <button className="cmd-copy" onClick={() => handleCopy(c.text)}>
-                        <Icons.Copy />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          {/* Attacker Report */}
+          <AttackerReport
+            session={selectedSession}
+            sessionLogs={sessionLogs}
+            activity={activity}
+            actLoading={actLoading}
+            onCopy={handleCopy}
+          />
 
           {/* AI Profile */}
           <ProfilePanel

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+*.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Vite
+dashboard/node_modules/
+dashboard/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+*.txt
+
+# Gemini / API keys
+.env.local
+.env.production

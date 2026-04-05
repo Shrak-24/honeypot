@@ -28,7 +28,7 @@ _db_uri = app.config.get('DATABASE_URI', 'mirrortrap.db')
 _started = start_ssh_honeypot(db_uri=_db_uri)
 if _started:
     import os
-    print(f"[run.py] 🍯 SSH honeypot active on port {os.getenv('SSH_HONEYPOT_PORT', '2222')}")
+    print(f"[run.py] [HONEYPOT] SSH honeypot active on port {os.getenv('SSH_HONEYPOT_PORT', '2222')}")
 else:
     print("[run.py] ⚠  SSH honeypot not started — install paramiko or set SSH_HONEYPOT_PORT=0 to suppress.")
 
