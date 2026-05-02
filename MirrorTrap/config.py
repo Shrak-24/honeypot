@@ -50,4 +50,4 @@ class Config:
                 "GEMINI_API_KEY is not set — AI endpoints will return errors."
             )
         for msg in warnings:
-            print(f"[config] ⚠  WARNING: {msg}", file=sys.stderr)
+            print(f"[config] [WARN] {msg}", file=sys.stderr)

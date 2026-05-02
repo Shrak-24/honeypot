@@ -122,6 +122,19 @@ def setup_db(db_uri: str = 'mirrortrap.db'):
             )
         ''')
 
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS victims (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id     TEXT    NOT NULL,
+                timestamp      TEXT    NOT NULL,
+                target_service TEXT    NOT NULL,
+                target_account TEXT,
+                attack_vector  TEXT,
+                data_accessed  TEXT,
+                severity       TEXT    DEFAULT \'medium\'
+            )
+        ''')
+
 
 # ---------------------------------------------------------------------------
 # Attack Logs
@@ -256,4 +269,56 @@ def get_activity_log(db_uri: str = 'mirrortrap.db', limit: int = 200,
         params.append(limit)
 
         cursor = conn.execute(query, params)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+# ---------------------------------------------------------------------------
+# Victim Tracking
+# ---------------------------------------------------------------------------
+
+def log_victim(session_id: str, target_service: str,
+               target_account: str = None, attack_vector: str = None,
+               data_accessed: str = None, severity: str = 'medium',
+               db_uri: str = 'mirrortrap.db'):
+    """Record what decoy service / account the attacker targeted."""
+    timestamp = datetime.datetime.utcnow().isoformat()
+    with _get_conn(db_uri) as conn:
+        conn.execute(
+            'INSERT INTO victims '
+            '(session_id, timestamp, target_service, target_account, '
+            ' attack_vector, data_accessed, severity) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (session_id, timestamp, target_service, target_account,
+             attack_vector, data_accessed, severity)
+        )
+
+
+def get_victims(db_uri: str = 'mirrortrap.db', limit: int = 200,
+               session_id_filter: str = None) -> list:
+    """Retrieve victim records, optionally filtered by session_id."""
+    with _get_conn(db_uri) as conn:
+        if session_id_filter:
+            cursor = conn.execute(
+                'SELECT * FROM victims WHERE session_id = ? ORDER BY id DESC LIMIT ?',
+                (session_id_filter, limit)
+            )
+        else:
+            cursor = conn.execute(
+                'SELECT * FROM victims ORDER BY id DESC LIMIT ?', (limit,)
+            )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_victims_summary(db_uri: str = 'mirrortrap.db') -> list:
+    """Return count of victims grouped by target_service."""
+    with _get_conn(db_uri) as conn:
+        cursor = conn.execute(
+            '''
+            SELECT target_service, severity,
+                   COUNT(*) AS count
+            FROM victims
+            GROUP BY target_service, severity
+            ORDER BY count DESC
+            '''
+        )
         return [dict(row) for row in cursor.fetchall()]

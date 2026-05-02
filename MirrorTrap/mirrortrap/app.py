@@ -1,13 +1,18 @@
 import os
+import sys
 from pathlib import Path
 from flask import Flask
 from flask_cors import CORS
 
+# ── Force UTF-8 stdout/stderr on Windows to prevent charmap codec errors ──────
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # ── Load .env once — run.py already does this before importing create_app,
 #    but we keep a lightweight fallback here so the app can also be imported
 #    directly (e.g. in tests) without needing run.py.
-# ── ISSUE-19 FIX: removed the duplicate full search loop; use a single
-#    targeted fallback only when the key env-var is genuinely absent.
 try:
     from dotenv import load_dotenv
     if not os.getenv('GEMINI_API_KEY'):
@@ -36,7 +41,13 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Run startup config validation (warns on missing keys, generates SECRET_KEY if absent)
+    # ── Fix Windows charmap errors: ensure JSON responses are always UTF-8 ──
+    # Setting ensure_ascii=False lets Flask emit real Unicode in JSON bodies;
+    # Flask still sends the response as UTF-8 bytes, so no codec issue arises.
+    app.json.ensure_ascii = False
+    app.json.sort_keys = False
+
+    # Run startup config validation
     config_class.validate()
 
     CORS(app, resources={r"/api/*": {"origins": "*"}, r"/ai/*": {"origins": "*"}})

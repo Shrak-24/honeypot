@@ -129,6 +129,21 @@ const Icons = {
       <line x1="12" y1="20" x2="12.01" y2="20"/>
     </svg>
   ),
+  Eye: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ),
+  Crosshair: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="22" y1="12" x2="18" y2="12"/>
+      <line x1="6" y1="12" x2="2" y2="12"/>
+      <line x1="12" y1="6" x2="12" y2="2"/>
+      <line x1="12" y1="22" x2="12" y2="18"/>
+    </svg>
+  ),
 }
 
 // ── Data hooks ─────────────────────────────────────────────────────────────────
@@ -186,6 +201,37 @@ function useActivity(session) {
   }, [session?.session_id, session?.source_ip])
 
   return { activity, loading }
+}
+
+function useVictims(sessionId) {
+  const [victims, setVictims]       = useState([])
+  const [allVictims, setAllVictims] = useState([])
+  const [summary, setSummary]       = useState([])
+  const [loading, setLoading]       = useState(false)
+
+  // Per-session victims (shown in the attacker report)
+  useEffect(() => {
+    if (!sessionId) { setVictims([]); return }
+    setLoading(true)
+    fetch(`${API}/api/victims?session_id=${encodeURIComponent(sessionId)}`)
+      .then(r => r.json())
+      .then(d => setVictims(d.data || []))
+      .catch(() => setVictims([]))
+      .finally(() => setLoading(false))
+  }, [sessionId])
+
+  // All victims + summary (shown in the Victims Board)
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API}/api/victims`).then(r => r.json()),
+      fetch(`${API}/api/victims/summary`).then(r => r.json()),
+    ]).then(([v, s]) => {
+      setAllVictims(v.data || [])
+      setSummary(s.data || [])
+    }).catch(() => {})
+  }, [])
+
+  return { victims, allVictims, summary, loading }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -453,7 +499,216 @@ function AttackTypeChart({ logs }) {
   )
 }
 
-// ── IP Geolocation Hook ───────────────────────────────────────────────────────
+// ── Victim Intel Panel ────────────────────────────────────────────────────────
+
+const SEVERITY_COLOR = { critical: 'red', high: 'orange', medium: 'yellow', low: 'teal' }
+
+function VictimIntel({ victims, loading }) {
+  if (loading) return (
+    <div className="report-section">
+      <div className="report-section-title"><Icons.Crosshair /> Victim Intel</div>
+      <div className="loader" style={{ padding: 10 }}><div className="spinner" /></div>
+    </div>
+  )
+  if (!victims || victims.length === 0) return null
+
+  const v = victims[0]  // one victim per session
+  const col = SEVERITY_COLOR[v.severity?.toLowerCase()] || 'yellow'
+
+  return (
+    <div className="report-section victim-intel-section">
+      <div className="report-section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icons.Crosshair />
+        Victim Intel
+        <span className={`threat-pill ${v.severity?.toLowerCase() === 'critical' ? 'critical' : v.severity?.toLowerCase() === 'high' ? 'medium' : 'low'}`}
+          style={{ marginLeft: 'auto', fontSize: 9, padding: '2px 7px' }}>
+          {v.severity?.toUpperCase()}
+        </span>
+      </div>
+      <div className="report-grid">
+        <div className="report-field">
+          <div className="report-label">Target Service</div>
+          <div className="report-value" style={{ fontWeight: 600 }}>{v.target_service}</div>
+        </div>
+        {v.target_account && (
+          <div className="report-field">
+            <div className="report-label">Target Account</div>
+            <div className="report-value mono">{v.target_account}</div>
+          </div>
+        )}
+        <div className="report-field">
+          <div className="report-label">Attack Vector</div>
+          <div className="report-value">
+            <span className="tool-chip" style={{ fontSize: 10 }}>
+              {(v.attack_vector || '—').replace(/_/g, ' ')}
+            </span>
+          </div>
+        </div>
+        {v.data_accessed && (
+          <div className="report-field" style={{ gridColumn: '1 / -1' }}>
+            <div className="report-label">Data Accessed / At Risk</div>
+            <div className="report-value" style={{ color: 'var(--red)', fontStyle: 'italic', fontSize: 11, lineHeight: 1.5 }}>
+              {v.data_accessed}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Victims Board ─────────────────────────────────────────────────────────────
+
+function VictimsBoard({ allVictims, summary, sessions }) {
+  const [filter, setFilter] = useState('all')
+
+  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
+  const sorted = [...allVictims].sort((a, b) =>
+    (severityOrder[a.severity?.toLowerCase()] ?? 9) -
+    (severityOrder[b.severity?.toLowerCase()] ?? 9)
+  )
+  const filtered = filter === 'all' ? sorted : sorted.filter(v => v.severity?.toLowerCase() === filter)
+
+  // Build service summary totals
+  const serviceTotals = {}
+  allVictims.forEach(v => {
+    serviceTotals[v.target_service] = (serviceTotals[v.target_service] || 0) + 1
+  })
+  const serviceEntries = Object.entries(serviceTotals).sort((a, b) => b[1] - a[1])
+  const maxSvc = serviceEntries[0]?.[1] || 1
+
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 }
+  allVictims.forEach(v => { if (counts[v.severity?.toLowerCase()] !== undefined) counts[v.severity.toLowerCase()]++ })
+
+  function sessionLabel(sid) {
+    const idx = sessions.findIndex(s => s.session_id === sid)
+    return idx >= 0 ? `Attacker ${idx + 1}` : sid
+  }
+
+  const SEV_PILL = {
+    critical: 'critical',
+    high: 'medium',
+    medium: 'low',
+    low: 'low',
+  }
+
+  return (
+    <div style={{ padding: '0 24px 24px', overflowY: 'auto' }}>
+
+      {/* Summary cards */}
+      <div className="stats-bar" style={{ marginBottom: 20, marginTop: 16 }}>
+        <div className="stat-card" onClick={() => setFilter('all')} style={{ cursor: 'pointer', outline: filter === 'all' ? '1.5px solid var(--accent)' : 'none' }}>
+          <div className="stat-icon teal"><Icons.Eye /></div>
+          <div className="stat-info">
+            <div className="stat-label">Total Victims</div>
+            <div className="stat-num teal">{allVictims.length}</div>
+          </div>
+        </div>
+        <div className="stat-card" onClick={() => setFilter('critical')} style={{ cursor: 'pointer', outline: filter === 'critical' ? '1.5px solid var(--red)' : 'none' }}>
+          <div className="stat-icon red"><Icons.Skull /></div>
+          <div className="stat-info">
+            <div className="stat-label">Critical</div>
+            <div className="stat-num red">{counts.critical}</div>
+          </div>
+        </div>
+        <div className="stat-card" onClick={() => setFilter('high')} style={{ cursor: 'pointer', outline: filter === 'high' ? '1.5px solid var(--orange, #f97316)' : 'none' }}>
+          <div className="stat-icon yellow"><Icons.Warning /></div>
+          <div className="stat-info">
+            <div className="stat-label">High</div>
+            <div className="stat-num yellow">{counts.high}</div>
+          </div>
+        </div>
+        <div className="stat-card" onClick={() => setFilter('medium')} style={{ cursor: 'pointer', outline: filter === 'medium' ? '1.5px solid var(--yellow)' : 'none' }}>
+          <div className="stat-icon blue"><Icons.Alert /></div>
+          <div className="stat-info">
+            <div className="stat-label">Medium</div>
+            <div className="stat-num blue">{counts.medium}</div>
+          </div>
+        </div>
+        <div className="stat-card" onClick={() => setFilter('low')} style={{ cursor: 'pointer' }}>
+          <div className="stat-icon purple"><Icons.Shield /></div>
+          <div className="stat-info">
+            <div className="stat-label">Low</div>
+            <div className="stat-num purple">{counts.low}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
+
+        {/* Victim cards */}
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {filtered.length} victim{filtered.length !== 1 ? 's' : ''} {filter !== 'all' ? `· ${filter}` : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map(v => (
+              <div key={v.id} className="victim-card" style={{
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderLeft: `3px solid var(--${SEVERITY_COLOR[v.severity?.toLowerCase()] || 'yellow'})`,
+                borderRadius: 8,
+                padding: '12px 14px',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: '6px 10px',
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{v.target_service}</div>
+                <span className={`threat-pill ${SEV_PILL[v.severity?.toLowerCase()] || 'low'}`} style={{ fontSize: 9, padding: '2px 7px', justifySelf: 'end' }}>
+                  {v.severity?.toUpperCase()}
+                </span>
+                {v.target_account && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', gridColumn: '1 / -1' }}>
+                    {v.target_account}
+                  </div>
+                )}
+                <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                  <span className="tool-chip" style={{ fontSize: 10 }}>
+                    {(v.attack_vector || '—').replace(/_/g, ' ')}
+                  </span>
+                  <span className="tool-chip" style={{ fontSize: 10, background: 'var(--bg-2)' }}>
+                    {sessionLabel(v.session_id)}
+                  </span>
+                </div>
+                {v.data_accessed && (
+                  <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 4, fontStyle: 'italic' }}>
+                    {v.data_accessed}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Service chart */}
+        <div>
+          <div className="panel" style={{ height: 'fit-content' }}>
+            <div className="panel-header">
+              <div className="panel-title">
+                <span className="panel-title-icon"><Icons.Target /></span>
+                Services Targeted
+              </div>
+            </div>
+            <div className="panel-body">
+              <div className="atk-bar-wrap">
+                {serviceEntries.map(([svc, cnt]) => (
+                  <div key={svc} className="atk-bar-row">
+                    <div className="atk-bar-label" style={{ fontSize: 10 }}>{svc}</div>
+                    <div className="atk-bar-track">
+                      <div className="atk-bar-fill" style={{ width: `${(cnt / maxSvc) * 100}%`, background: 'var(--red)' }} />
+                    </div>
+                    <div className="atk-bar-count">{cnt}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
 
 function useGeo(ip) {
   const [geo, setGeo] = useState(null)
@@ -470,7 +725,7 @@ function useGeo(ip) {
 
 // ── Attacker Report Panel ─────────────────────────────────────────────────────
 
-function AttackerReport({ session, sessionLogs, activity, actLoading, onCopy }) {
+function AttackerReport({ session, sessionLogs, activity, actLoading, onCopy, victims, vicLoading }) {
   const geo = useGeo(session?.source_ip)
 
   if (!session) {
@@ -636,6 +891,9 @@ function AttackerReport({ session, sessionLogs, activity, actLoading, onCopy }) 
             </div>
           )}
 
+          {/* Victim Intel */}
+          <VictimIntel victims={victims} loading={vicLoading} />
+
           {/* Commands log */}
           {cmds.length > 0 && (
             <div className="report-section">
@@ -663,7 +921,7 @@ function AttackerReport({ session, sessionLogs, activity, actLoading, onCopy }) 
   )
 }
 
-// ── Profile Panel – AI ────────────────────────────────────────────────────────
+// ── IP Geolocation Hook ───────────────────────────────────────────────────────
 
 function ProfilePanel({ sessionId, sessions, toast }) {
   const [profile, setProfile] = useState(null)
@@ -685,9 +943,15 @@ function ProfilePanel({ sessionId, sessions, toast }) {
       })
       const j = await r.json()
       if (j.status === 'error') throw new Error(j.message)
+      // profile may itself contain an error field (quota, bad key, etc.)
+      if (j.profile?.error && !j.profile?.quota_exceeded) {
+        throw new Error(j.profile.error)
+      }
       setProfile(j.profile)
       setMeta({ reduction: j.token_reduction_pct, ips: j.unique_ips_analyzed })
-      toast(`Analysis complete — ${j.token_reduction_pct?.toFixed(0)}% token savings`, 'success')
+      if (!j.profile?.error) {
+        toast(`Analysis complete — ${j.token_reduction_pct?.toFixed(0)}% token savings`, 'success')
+      }
     } catch (e) {
       setError(e.message)
       toast('Gemini analysis failed', 'error')
@@ -769,10 +1033,38 @@ function ProfilePanel({ sessionId, sessions, toast }) {
             )}
 
             {profile?.error && (
-              <div className="ai-error">
-                <Icons.Warning />
-                <span>{profile.error}</span>
-              </div>
+              profile?.quota_exceeded ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(255,209,102,0.08), rgba(255,140,66,0.06))',
+                  border: '1px solid rgba(255,209,102,0.25)',
+                  borderRadius: 8,
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--yellow)', fontWeight: 700, fontSize: 12 }}>
+                    <Icons.Warning /> Gemini Quota Exceeded
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                    The free-tier daily limit has been reached for all available models.
+                    The analysis feature will be available again tomorrow.
+                  </div>
+                  <a
+                    href="https://ai.google.dev/pricing"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 10, color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    ↗ View Gemini API plans
+                  </a>
+                </div>
+              ) : (
+                <div className="ai-error">
+                  <Icons.Warning />
+                  <span>{profile.error}</span>
+                </div>
+              )
             )}
           </>
         )}
@@ -889,10 +1181,12 @@ export default function App() {
   const { sessions, allLogs, loading: sessLoading, refresh, lastRefresh } = useSessions()
   const [selectedId, setSelectedId]   = useState(null)
   const [refreshing, setRefreshing]   = useState(false)
+  const [view, setView]               = useState('attackers')  // 'attackers' | 'victims'
   const { toasts, push: toast }       = useToast()
 
   const selectedSession = sessions.find(s => s.session_id === selectedId) || null
   const { activity, loading: actLoading } = useActivity(selectedSession)
+  const { victims, allVictims, summary, loading: vicLoading } = useVictims(selectedId)
 
   // Auto-select first session
   useEffect(() => {
@@ -943,6 +1237,32 @@ export default function App() {
             <div className="topbar-stat-value">{AUTO_REFRESH_SECONDS}s</div>
           </div>
           <div className="topbar-divider" />
+          {/* View toggle */}
+          <div style={{ display: 'flex', gap: 6, background: 'var(--bg-2)', borderRadius: 8, padding: 4 }}>
+            <button
+              className={`icon-btn${view === 'attackers' ? ' active-tab' : ''}`}
+              style={{ fontSize: 11, padding: '5px 14px', borderRadius: 5, gap: 7,
+                       width: 'auto', height: 'auto', minWidth: 'unset',
+                       background: view === 'attackers' ? 'var(--panel)' : 'transparent',
+                       color: view === 'attackers' ? 'var(--accent)' : 'var(--text-muted)',
+                       display: 'flex', alignItems: 'center', letterSpacing: '0.02em' }}
+              onClick={() => setView('attackers')}
+            >
+              <Icons.Target /> Attackers
+            </button>
+            <button
+              className={`icon-btn${view === 'victims' ? ' active-tab' : ''}`}
+              style={{ fontSize: 11, padding: '5px 14px', borderRadius: 5, gap: 7,
+                       width: 'auto', height: 'auto', minWidth: 'unset',
+                       background: view === 'victims' ? 'var(--panel)' : 'transparent',
+                       color: view === 'victims' ? 'var(--red)' : 'var(--text-muted)',
+                       display: 'flex', alignItems: 'center', letterSpacing: '0.02em' }}
+              onClick={() => setView('victims')}
+            >
+              <Icons.Crosshair /> Victims
+            </button>
+          </div>
+          <div className="topbar-divider" />
           <div className="topbar-actions">
             <button className="icon-btn" onClick={handleRefresh} title="Refresh now">
               <Icons.Refresh />
@@ -955,6 +1275,9 @@ export default function App() {
       <StatsBar sessions={sessions} allLogs={allLogs} />
 
       {/* Main Grid */}
+      {view === 'victims' ? (
+        <VictimsBoard allVictims={allVictims} summary={summary} sessions={sessions} />
+      ) : (
       <div className="main">
 
         {/* Sidebar — attacker list */}
@@ -977,6 +1300,8 @@ export default function App() {
             activity={activity}
             actLoading={actLoading}
             onCopy={handleCopy}
+            victims={victims}
+            vicLoading={vicLoading}
           />
 
           {/* AI Profile */}
@@ -995,6 +1320,7 @@ export default function App() {
           />
         </div>
       </div>
+      )}
 
       {/* Auto-refresh bar */}
       <div style={{ position: 'fixed', top: 106, left: 0, right: 0, zIndex: 20 }}>

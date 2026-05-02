@@ -1,7 +1,10 @@
 from flask import Blueprint, jsonify, current_app, request
 import urllib.request
 import json as _json
-from mirrortrap.core.logger import get_logs, get_sessions, get_session_commands, get_activity_log
+from mirrortrap.core.logger import (
+    get_logs, get_sessions, get_session_commands, get_activity_log,
+    get_victims, get_victims_summary,
+)
 
 api_bp = Blueprint('api_bp', __name__)
 
@@ -90,3 +93,26 @@ def get_activity():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@api_bp.route('/victims/summary', methods=['GET'])
+def victims_summary():
+    """Aggregated victim count per target_service — used for the overview board."""
+    db_uri = current_app.config.get('DATABASE_URI', 'mirrortrap.db')
+    try:
+        summary = get_victims_summary(db_uri)
+        return jsonify({"status": "success", "data": summary}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@api_bp.route('/victims', methods=['GET'])
+def list_victims():
+    """List all victim records. Supports ?session_id= and ?limit= filters."""
+    limit      = request.args.get('limit', 200, type=int)
+    session_id = request.args.get('session_id') or None
+    db_uri     = current_app.config.get('DATABASE_URI', 'mirrortrap.db')
+    try:
+        victims = get_victims(db_uri, limit, session_id)
+        return jsonify({"status": "success", "data": victims}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

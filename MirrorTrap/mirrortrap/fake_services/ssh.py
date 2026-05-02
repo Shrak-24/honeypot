@@ -143,7 +143,7 @@ def _load_or_generate_host_key(key_path: str | None) -> "paramiko.RSAKey":
     if key_path:
         Path(key_path).parent.mkdir(parents=True, exist_ok=True)
         key.write_private_key_file(key_path)
-        log.info(f"[SSH Honeypot] Generated new RSA host key → {key_path}")
+        log.info(f"[SSH Honeypot] Generated new RSA host key -> {key_path}")
     else:
         log.info("[SSH Honeypot] Using ephemeral RSA host key (set SSH_HOST_KEY_PATH to persist)")
 
@@ -349,7 +349,7 @@ def _listener_loop(host: str, port: int, db_uri: str):
         return
 
     srv_sock.listen(50)
-    log.info(f"[SSH Honeypot] 🍯 Listening on {host}:{port}")
+    log.info(f"[SSH Honeypot] [HONEYPOT] Listening on {host}:{port}")
 
     while True:
         try:

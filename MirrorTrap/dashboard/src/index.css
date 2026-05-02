@@ -1061,3 +1061,20 @@ button { cursor: pointer; font-family: var(--sans); }
 .report-flag.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(255,77,109,0.25); }
 .report-flag.orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,140,66,0.25); }
 
+/* ── Victim Intel Section ───────────────────────────────────────────────────── */
+:root { --bg-2: var(--surface-3); }
+
+.victim-intel-section {
+  border-left: 3px solid var(--red);
+  padding-left: 12px;
+  margin-left: -12px;
+  background: linear-gradient(90deg, var(--red-dim) 0%, transparent 60%);
+  border-radius: 0 6px 6px 0;
+}
+
+.victim-intel-section .report-section-title {
+  color: var(--red);
+}
+
+/* ── Victims Board scrollable area ─────────────────────────────────────────── */
+.layout > div[style*="padding: '0 24px"] { overflow-y: auto; }

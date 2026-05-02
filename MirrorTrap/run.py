@@ -1,5 +1,12 @@
 import os
+import sys
 from pathlib import Path
+
+# ── Force UTF-8 on Windows stdout/stderr (prevents charmap errors) ────────────
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # ── Load .env (looks in CWD, MirrorTrap dir, and one level up) ────────────
 try:
@@ -30,7 +37,7 @@ if _started:
     import os
     print(f"[run.py] [HONEYPOT] SSH honeypot active on port {os.getenv('SSH_HONEYPOT_PORT', '2222')}")
 else:
-    print("[run.py] ⚠  SSH honeypot not started — install paramiko or set SSH_HONEYPOT_PORT=0 to suppress.")
+    print("[run.py] [WARN] SSH honeypot not started -- install paramiko or set SSH_HONEYPOT_PORT=0 to suppress.")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

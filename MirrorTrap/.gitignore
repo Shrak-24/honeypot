@@ -7,10 +7,19 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Environment files — NEVER commit secrets
 .env
 *.env
+.env.local
+.env.production
 
-# Database
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Database — runtime data, not source
 *.db
 *.sqlite
 *.sqlite3
@@ -19,7 +28,7 @@ build/
 dashboard/node_modules/
 dashboard/dist/
 
-# OS
+# OS artefacts
 .DS_Store
 Thumbs.db
 
@@ -28,10 +37,14 @@ Thumbs.db
 .idea/
 *.swp
 
-# Logs
+# Logs & test output
 *.log
-*.txt
+test_results.txt
+final_results.txt
+gemini_test.txt
+test_ascii.txt
+models_out.txt
 
-# Gemini / API keys
-.env.local
-.env.production
+# SSH host key (auto-generated at runtime)
+ssh_host_rsa_key
+ssh_host_rsa_key.pub

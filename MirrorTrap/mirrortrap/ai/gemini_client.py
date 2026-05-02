@@ -1,7 +1,7 @@
 """
 mirrortrap/ai/gemini_client.py
 ──────────────────────────────
-Thin wrapper around the Google Generative AI SDK (google-generativeai).
+Thin wrapper around the Google Gen AI SDK (google-genai).
 Provides two high-level helpers:
   • analyze_logs()        → returns a structured attacker profile dict
   • generate_fake_data()  → returns a plausible fake credential/file payload
@@ -15,7 +15,6 @@ AI Pipeline (analyze_logs):
 import json
 import re
 import time
-import google.generativeai as genai
 
 from mirrortrap.ai.summarizer import build_prompt_summary, estimate_token_reduction
 
@@ -28,18 +27,17 @@ _MODEL_CANDIDATES = [
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
-    "gemini-pro",
 ]
 
 
 # ---------------------------------------------------------------------------
-# SDK helpers
+# SDK helpers (google-genai new SDK)
 # ---------------------------------------------------------------------------
 
-def _get_model(api_key: str, model_name: str) -> genai.GenerativeModel:
-    """Configure the SDK and return a GenerativeModel for the given model."""
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(model_name)
+def _make_client(api_key: str):
+    """Return a configured google.genai Client."""
+    from google import genai
+    return genai.Client(api_key=api_key)
 
 
 def _is_quota_error(err_str: str) -> bool:
@@ -47,20 +45,23 @@ def _is_quota_error(err_str: str) -> bool:
 
 
 def _is_model_unavailable(err_str: str) -> bool:
-    return any(k in err_str.lower() for k in ('not found', 'does not exist', 'deprecated'))
+    return any(k in err_str.lower() for k in ('not found', 'does not exist', 'deprecated', '404'))
 
 
-def _generate_with_retry(model: genai.GenerativeModel, prompt: str,
+def _generate_with_retry(client, model_name: str, prompt: str,
                          max_retries: int = 3) -> str:
     """
-    Call model.generate_content() with exponential back-off for 429 errors.
+    Call client.models.generate_content() with exponential back-off for 429 errors.
     Always returns a non-empty string or raises — never returns None.
     """
     last_exc: Exception | None = None
 
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
             text = response.text
             if text:
                 return text
@@ -113,12 +114,12 @@ def _try_all_models(api_key: str, prompt: str) -> str:
     Try each model candidate in order. Falls through on model-unavailable
     or quota errors, re-raises only after exhausting all candidates.
     """
+    client = _make_client(api_key)
     last_quota_exc: Exception | None = None
 
     for model_name in _MODEL_CANDIDATES:
         try:
-            model = _get_model(api_key, model_name)
-            return _generate_with_retry(model, prompt)
+            return _generate_with_retry(client, model_name, prompt)
         except Exception as e:
             err = str(e)
             if _is_model_unavailable(err):
@@ -171,7 +172,7 @@ def analyze_logs(logs: list, api_key: str) -> dict:
     summary = build_prompt_summary(logs)
     reduction_pct = estimate_token_reduction(logs, summary)
     print(
-        f"[gemini_client] Log compression: {len(logs)} rows → compact summary "
+        f"[gemini_client] Log compression: {len(logs)} rows -> compact summary "
         f"({reduction_pct:.1f}% token reduction)"
     )
 
@@ -202,12 +203,18 @@ Key fields explained:
 Respond ONLY with a valid JSON object. Do NOT include explanatory text outside the JSON.
 """
 
-    # ── Step 3: Send to Gemini ─────────────────────────────────────────────
+    # ── Step 3: Send to Gemini ─────────────────────────────────────
     try:
         text = _try_all_models(api_key, prompt)
         return _extract_json(text)
     except Exception as exc:
-        return {"error": str(exc)}
+        err = str(exc)
+        if _is_quota_error(err):
+            return {
+                "error": "Gemini API daily quota exceeded. Please try again tomorrow or upgrade your API plan.",
+                "quota_exceeded": True,
+            }
+        return {"error": err[:300]}  # cap raw errors at 300 chars
 
 
 def generate_fake_data(context: str, api_key: str) -> dict:
@@ -249,4 +256,10 @@ Rules:
         text = _try_all_models(api_key, prompt)
         return _extract_json(text)
     except Exception as exc:
-        return {"error": str(exc)}
+        err = str(exc)
+        if _is_quota_error(err):
+            return {
+                "error": "Gemini API daily quota exceeded. Please try again tomorrow or upgrade your API plan.",
+                "quota_exceeded": True,
+            }
+        return {"error": err[:300]}
